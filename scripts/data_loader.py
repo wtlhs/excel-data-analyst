@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Excel 数据批量加载器
 支持 .xlsx, .xls, .csv 格式
 """
+
+# Windows 兼容性：设置 UTF-8 编码
+import sys
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 import argparse
 import json
@@ -31,7 +39,16 @@ def load_excel_files(directory, cache_dir=".cache"):
     for file_path in files:
         try:
             if file_path.suffix == '.csv':
-                df = pd.read_csv(file_path, encoding='utf-8-sig')
+                # Windows 兼容：尝试多种编码
+                df = None
+                for encoding in ['utf-8-sig', 'gbk', 'gb2312', 'utf-8', 'latin-1']:
+                    try:
+                        df = pd.read_csv(file_path, encoding=encoding)
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                if df is None:
+                    raise UnicodeDecodeError("无法识别文件编码")
             else:
                 df = pd.read_excel(file_path)
             

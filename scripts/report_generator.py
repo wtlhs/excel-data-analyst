@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 分析报告生成器
 生成多维度数据分析报告
 """
+
+# Windows 兼容性：设置 UTF-8 编码
+import sys
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 import argparse
 import json
