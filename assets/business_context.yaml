@@ -1,0 +1,126 @@
+# 悦信物流业务背景配置
+# 此配置用于数据分析时的业务上下文理解
+
+company:
+  name: "悦信物流"
+  type: "海外仓代理公司"
+  # 注意：对客户保密，不能让客户知道是代理身份
+  
+suppliers:
+  # 物流面单供应商（物流商）
+  logistics:
+    name: "物流供应商"
+    role: "提供物流面单"
+    description: "当客户平台不提供物流面单时，向此供应商获取面单"
+  
+  # 仓库供应商（仓库商）
+  warehouse:
+    name: "仓库供应商"
+    role: "提供仓储服务"
+    description: "负责从仓库收货、发货、贴面单等实际操作"
+    functions:
+      - "收货入库"
+      - "发货出库"
+      - "贴物流面单"
+      - "库存管理"
+
+customers:
+  # 目标客户：跨境电商卖家
+  description: "在跨境电商平台售卖货物的卖家"
+  
+  platforms:
+    - "Amazon"
+    - "Temu"
+    - "Tik Tok"
+    - "Shopify"
+    - "Wayfair"
+    - "其他跨境电商平台"
+  
+  # 客户使用ERP系统对接
+  erp_integration: "ERP通过OpenAPI将出入库指令推送给悦信物流"
+
+order_flows:
+  # 流程A：有物流面单
+  # 适用：平台提供物流面单的情况
+  with_label:
+    name: "有面单发货流程"
+    steps:
+      1. "客户ERP推送发货指令（含平台面单文件）"
+      2. "悦信收到指令和面单文件"
+      3. "通过API将订单指令+面单推送给仓库"
+      4. "仓库贴面单发货"
+      5. "物流商负责派送"
+  
+  # 流程B：无物流面单
+  # 适用：平台不提供物流面单的情况
+  without_label:
+    name: "无面单发货流程"
+    steps:
+      1. "客户ERP推送发货指令（无面单）"
+      2. "悦信收到指令"
+      3. "向物流供应商获取物流面单"
+      4. "将订单指令+物流面单推送给仓库"
+      5. "仓库贴面单发货"
+      6. "物流商负责派送"
+
+business_metrics:
+  # 关键业务指标
+  inbound:
+    description: "入库业务"
+    metrics:
+      - "入库单量"
+      - "入库SKU数"
+      - "入库重量/体积"
+      - "入库时效"
+  
+  outbound:
+    description: "出库业务"
+    metrics:
+      - "出库单量"
+      - "出库SKU数"
+      - "出库重量/体积"
+      - "出库时效"
+      - "妥投率"
+  
+  inventory:
+    description: "库存业务"
+    metrics:
+      - "当前库存量"
+      - "库存周转率"
+      - "滞销SKU"
+      - "库存占用成本"
+  
+  finance:
+    description: "财务指标"
+    metrics:
+      - "收入（仓储费、物流费）"
+      - "成本（仓库费用、物流成本）"
+      - "利润"
+      - "应收账款"
+      - "坏账率"
+
+common_analysis_requirements:
+  # 常见分析需求
+  - name: "业务趋势分析"
+    description: "按月/季度分析入库、出库、库存变化趋势"
+  
+  - name: "仓库利用率分析"
+    description: "分析各仓库的存储容量使用情况"
+  
+  - name: "物流时效分析"
+    description: "分析从发货到妥投的时效"
+  
+  - name: "客户分层分析"
+    description: "按发货量/收入对客户进行ABC分层"
+  
+  - name: "SKU分析"
+    description: "分析SKU的周转率、滞销品、爆品"
+  
+  - name: "渠道分析"
+    description: "分析各平台（Amazon、Temu等）的业务占比"
+  
+  - name: "面单来源分析"
+    description: "分析有面单vs无面单的发货占比"
+  
+  - name: "异常预警"
+    description: "库存异常、时效异常、费用异常预警"
