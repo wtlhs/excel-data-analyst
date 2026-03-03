@@ -1,0 +1,90 @@
+# 风险规则配置示例
+# 用于自定义业务规则告警
+
+# 数值阈值规则
+thresholds:
+  # 销售相关
+  - name: "日销售额过低"
+    table: "sales"
+    column: "amount"
+    condition: "less_than"
+    value: 10000
+    level: "high"
+    
+  - name: "日销售额过高"
+    table: "sales"
+    column: "amount"
+    condition: "greater_than"
+    value: 1000000
+    level: "medium"
+
+  # 库存相关
+  - name: "库存不足"
+    table: "inventory"
+    column: "quantity"
+    condition: "less_than"
+    value: 100
+    level: "high"
+    
+  - name: "库存积压"
+    table: "inventory"
+    column: "quantity"
+    condition: "greater_than"
+    value: 10000
+    level: "medium"
+
+# 比率规则
+ratios:
+  - name: "退货率过高"
+    table: "orders"
+    numerator: "return_count"
+    denominator: "total_count"
+    threshold: 0.1
+    level: "high"
+    
+  - name: "毛利率过低"
+    table: "products"
+    numerator: "profit"
+    denominator: "revenue"
+    threshold: 0.15
+    level: "medium"
+
+# 趋势规则
+trends:
+  - name: "连续下降"
+    table: "metrics"
+    column: "value"
+    periods: 3
+    direction: "down"
+    level: "high"
+    
+  - name: "波动过大"
+    table: "metrics"
+    column: "value"
+    periods: 7
+    cv_threshold: 0.5  # 变异系数
+    level: "medium"
+
+# 数据质量规则
+quality:
+  - name: "缺失率过高"
+    threshold: 0.3
+    level: "medium"
+    
+  - name: "重复率过高"
+    threshold: 0.1
+    level: "low"
+
+# 组合规则
+composite:
+  - name: "高风险客户"
+    conditions:
+      - table: "customers"
+        column: "overdue_days"
+        operator: ">"
+        value: 30
+      - table: "customers"
+        column: "credit_used"
+        operator: ">"
+        value: 0.8
+    level: "critical"
