@@ -20,7 +20,7 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 
-def generate_html_report(dataframes, relations, risks, business, output_dir):
+def generate_html_report(dataframes, relations, risks, business, advanced, output_dir):
     """生成 HTML 报告"""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -37,13 +37,16 @@ def generate_html_report(dataframes, relations, risks, business, output_dir):
     data_quality = 1 - (total_nulls / (total_rows * total_cols))
     
     # 生成核心发现
-    insights_html = generate_insights_html(risks, business, dataframes)
+    insights_html = generate_insights_html(risks, business, dataframes, advanced)
     
     # 生成业务领域卡片
     domain_cards_html = generate_domain_cards_html(business)
     
     # 生成预警卡片
     alerts_html = generate_alerts_html(risks, business)
+    
+    # 生成高级分析卡片
+    advanced_cards_html = generate_advanced_cards_html(advanced)
     
     # 生成数据表行
     table_rows_html = generate_table_rows_html(dataframes)
@@ -55,7 +58,7 @@ def generate_html_report(dataframes, relations, risks, business, output_dir):
     metrics_content_html = generate_metrics_content_html(dataframes)
     
     # 生成图表数据
-    chart_labels, chart_data = generate_chart_data(business)
+    chart_labels, chart_data = generate_chart_data(advanced)
     
     # 替换模板变量
     html = template.replace('{{generated_at}}', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
@@ -67,6 +70,7 @@ def generate_html_report(dataframes, relations, risks, business, output_dir):
     html = html.replace('{{insights}}', insights_html)
     html = html.replace('{{domain_cards}}', domain_cards_html)
     html = html.replace('{{alerts}}', alerts_html)
+    html = html.replace('{{advanced_cards}}', advanced_cards_html)
     html = html.replace('{{table_rows}}', table_rows_html)
     html = html.replace('{{relation_nodes}}', relation_nodes_html)
     html = html.replace('{{metrics_content}}', metrics_content_html)
@@ -80,7 +84,7 @@ def generate_html_report(dataframes, relations, risks, business, output_dir):
     
     return report_file
 
-def generate_insights_html(risks, business, dataframes):
+def generate_insights_html(risks, business, dataframes, advanced=None):
     """生成核心发现 HTML"""
     insights = []
     
@@ -93,6 +97,30 @@ def generate_insights_html(risks, business, dataframes):
         for domain, data in business.get("domains", {}).items():
             for insight in data.get("insights", [])[:2]:
                 insights.append(insight)
+    
+    # 高级分析洞察
+    if advanced:
+        dims = advanced.get("dimensions", {})
+        
+        # 时间序列
+        if "time_series" in dims:
+            trends = dims["time_series"].get("trends", {})
+            for key, trend in trends.items():
+                if trend.get("growth_rate"):
+                    insights.append(f"{key}: 增长率 {trend['growth_rate']:.1f}%")
+        
+        # 相关性
+        if "correlation" in dims:
+            corr = dims["correlation"].get("strong_correlations", [])
+            if corr:
+                insights.append(f"发现 {len(corr)} 对强相关变量")
+        
+        # RFM
+        if "stratification" in dims:
+            rfm = dims["stratification"].get("rfm", {})
+            for table, data in rfm.items():
+                if data.get("top_segment"):
+                    insights.append(f"主要客户群体: {data['top_segment']}")
     
     html = '<ul class="insight-list">\n'
     for insight in insights[:8]:
@@ -181,6 +209,103 @@ def generate_alerts_html(risks, business):
     
     return html
 
+def generate_advanced_cards_html(advanced):
+    """生成高级分析卡片 HTML"""
+    if not advanced or not advanced.get("dimensions"):
+        return '<p style="color: var(--text-secondary); text-align: center;">暂无高级分析数据</p>'
+    
+    dims = advanced.get("dimensions", {})
+    html = ""
+    
+    # 时间序列分析
+    if "time_series" in dims:
+        trends = dims["time_series"].get("trends", {})
+        if trends:
+            html += f'''
+            <div class="domain-card">
+                <div class="domain-header">
+                    <div class="domain-icon" style="background: linear-gradient(135deg, #8b5cf6, #6366f1);">📈</div>
+                    <div class="domain-title">时间序列分析</div>
+                </div>
+                <ul class="insight-list">
+            '''
+            for key, trend in list(trends.items())[:3]:
+                direction = "↗️" if trend.get("trend_direction") == "up" else "↘️"
+                growth = trend.get("growth_rate", 0)
+                html += f'<li>{key.split(".")[-1]}: {direction} {growth:+.1f}%</li>'
+            html += '</ul></div>'
+    
+    # 相关性分析
+    if "correlation" in dims:
+        corr = dims["correlation"].get("strong_correlations", [])
+        if corr:
+            html += f'''
+            <div class="domain-card">
+                <div class="domain-header">
+                    <div class="domain-icon" style="background: linear-gradient(135deg, #ec4899, #f43f5e);">🔗</div>
+                    <div class="domain-title">相关性分析</div>
+                </div>
+                <ul class="insight-list">
+            '''
+            for c in corr[:3]:
+                html += f"<li>{c['var1']} ↔ {c['var2']}: {c['correlation']:.2f}</li>"
+            html += f'<li>共发现 <strong>{len(corr)}</strong> 对强相关变量</li>'
+            html += '</ul></div>'
+    
+    # RFM客户分层
+    if "stratification" in dims:
+        rfm = dims["stratification"].get("rfm", {})
+        if rfm:
+            html += f'''
+            <div class="domain-card">
+                <div class="domain-header">
+                    <div class="domain-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">👥</div>
+                    <div class="domain-title">RFM客户分层</div>
+                </div>
+                <ul class="insight-list">
+            '''
+            for table, data in list(rfm.items())[:2]:
+                segments = data.get("segments", {})
+                for seg, count in list(segments.items())[:3]:
+                    html += f'<li>{seg}: {count}人</li>'
+            html += '</ul></div>'
+    
+    # 预测分析
+    if "forecast" in dims:
+        fc = dims["forecast"].get("simple_ma", {})
+        if fc:
+            html += f'''
+            <div class="domain-card">
+                <div class="domain-header">
+                    <div class="domain-icon" style="background: linear-gradient(135deg, #10b981, #059669);">🔮</div>
+                    <div class="domain-title">趋势预测</div>
+                </div>
+                <ul class="insight-list">
+            '''
+            for key, data in list(fc.items())[:3]:
+                signal = data.get("signal", "持有")
+                signal_icon = "📈" if signal == "买入" else ("📉" if signal == "卖出" else "➡️")
+                html += f'<li>{key.split(".")[-1]}: {signal_icon} {signal}</li>'
+            html += '</ul></div>'
+    
+    # 异常深度分析
+    if "anomaly_deep" in dims:
+        outliers = dims["anomaly_deep"].get("outliers", {})
+        if outliers:
+            html += f'''
+            <div class="domain-card">
+                <div class="domain-header">
+                    <div class="domain-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">⚠️</div>
+                    <div class="domain-title">异常深度分析</div>
+                </div>
+                <ul class="insight-list">
+            '''
+            for key, data in list(outliers.items())[:3]:
+                html += f"<li>{key}: {data['total_count']}个异常值</li>"
+            html += '</ul></div>'
+    
+    return html if html else '<p style="color: var(--text-secondary); text-align: center;">暂无高级分析数据</p>'
+
 def generate_table_rows_html(dataframes):
     """生成数据表行 HTML"""
     html = ""
@@ -256,13 +381,36 @@ def generate_metrics_content_html(dataframes):
     
     return html
 
-def generate_chart_data(business):
+def generate_chart_data(advanced=None, business=None):
     """生成图表数据"""
     labels = []
     data = []
     
-    # 从销售趋势获取数据
-    if business:
+    # 优先从高级分析获取数据
+    if advanced:
+        dims = advanced.get("dimensions", {})
+        
+        # 时间序列数据
+        if "time_series" in dims:
+            trends = dims["time_series"].get("trends", {})
+            for key, value in trends.items():
+                if value.get("periods"):
+                    labels = value.get("periods", [])
+                    data = value.get("values", [])
+                    break
+        
+        # 如果没有时间序列，尝试RFM
+        if not labels and "stratification" in dims:
+            rfm = dims["stratification"].get("rfm", {})
+            for table, data_rfm in rfm.items():
+                segments = data_rfm.get("segments", {})
+                if segments:
+                    labels = list(segments.keys())
+                    data = list(segments.values())
+                    break
+    
+    # 从业务分析获取数据
+    if not labels and business:
         sales_data = business.get("domains", {}).get("sales", {}).get("metrics", {})
         for key, value in sales_data.items():
             if "trend" in key and isinstance(value, dict):
@@ -297,6 +445,7 @@ def main():
     parser.add_argument('--relations', default='.cache/relations.json', help='关联文件')
     parser.add_argument('--risks', default='.cache/risk_analysis.json', help='风险分析文件')
     parser.add_argument('--business', default='.cache/business_analysis.json', help='业务分析文件')
+    parser.add_argument('--advanced', default='.cache/advanced_analysis.json', help='高级分析文件')
     parser.add_argument('--output', default='report', help='输出目录')
     
     args = parser.parse_args()
@@ -320,9 +469,14 @@ def main():
         with open(args.business, 'r', encoding='utf-8') as f:
             business = json.load(f)
     
+    advanced = {}
+    if Path(args.advanced).exists():
+        with open(args.advanced, 'r', encoding='utf-8') as f:
+            advanced = json.load(f)
+    
     print("Generating HTML report...\n")
     
-    report_file = generate_html_report(dataframes, relations, risks, business, args.output)
+    report_file = generate_html_report(dataframes, relations, risks, business, advanced, args.output)
     
     print(f"✓ HTML report saved to {report_file}")
 
